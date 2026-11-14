@@ -118,3 +118,85 @@ test("parseArgs recognizes the no-color boolean option", () => {
   });
   assert.throws(() => parseArgs(["list", "--no-color=true"]), /does not take a value/);
 });
+
+test("parseArgs rejects unknown options and options without values", () => {
+  assert.throws(() => parseArgs(["add", "--unknown", "value"]), /Unknown option/);
+  assert.throws(() => parseArgs(["add", "--amount"]), /requires a value/);
+});
+
+test("addExpense rejects missing and duplicate IDs", () => {
+  const valid = {
+    amount: 10,
+    category: "food",
+    date: "2026-11-03",
+    id: "12345678-1234-1234-1234-123456789abc",
+  };
+  const existing = addExpense([], valid);
+
+  assert.throws(() => addExpense([], { ...valid, id: "" }), /ID is required/);
+  assert.throws(() => addExpense(existing, valid), /ID must be unique/);
+});
+
+test("addExpense rejects non-positive, non-numeric, and non-finite amounts", () => {
+  const valid = {
+    category: "food",
+    date: "2026-11-03",
+    id: "12345678-1234-1234-1234-123456789abc",
+  };
+  for (const amount of [0, -1, "not money", Infinity]) {
+    assert.throws(() => addExpense([], { ...valid, amount }), /positive number/);
+  }
+});
+
+test("addExpense rejects blank categories and non-text notes", () => {
+  const valid = {
+    amount: 10,
+    category: "food",
+    date: "2026-11-03",
+    id: "12345678-1234-1234-1234-123456789abc",
+  };
+
+  assert.throws(() => addExpense([], { ...valid, category: "  " }), /Category is required/);
+  assert.throws(() => addExpense([], { ...valid, note: 123 }), /Note must be text/);
+});
+
+test("listExpenses filters by category alone", () => {
+  const expenses = [
+    { category: "food", date: "2026-11-03" },
+    { category: "transport", date: "2026-11-03" },
+  ];
+
+  assert.deepEqual(listExpenses(expenses, { category: "FOOD" }), [expenses[0]]);
+});
+
+test("listExpenses filters by month alone and returns no unrelated rows", () => {
+  const expenses = [
+    { category: "food", date: "2026-11-03" },
+    { category: "food", date: "2026-10-03" },
+  ];
+
+  assert.deepEqual(listExpenses(expenses, { month: "2026-11" }), [expenses[0]]);
+  assert.deepEqual(listExpenses(expenses, { month: "2025-01" }), []);
+});
+
+test("summarizeExpenses handles an empty list without a biggest expense or warning", () => {
+  assert.deepEqual(summarizeExpenses([]), {
+    total: 0,
+    categories: [],
+    biggest: null,
+    budgetWarning: null,
+  });
+});
+
+test("summarizeExpenses warns when spending exceeds the budget", () => {
+  const report = summarizeExpenses([
+    { amount: 110, category: "food", date: "2026-11-03" },
+  ], {}, 100);
+
+  assert.equal(report.total, 110);
+  assert.equal(report.budgetWarning, "Budget exceeded (100% or more).");
+});
+
+test("toCsv includes a header and handles an empty list", () => {
+  assert.equal(toCsv([]), '"id","amount","category","note","date"\r\n');
+});
