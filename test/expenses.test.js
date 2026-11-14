@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { parseArgs } from "../src/args.js";
 import { addExpense, deleteExpense, editExpense, listExpenses } from "../src/expenses.js";
+import { parseCsvRecord, toCsv } from "../src/csv.js";
 import { summarizeExpenses } from "../src/report.js";
 
 test("parseArgs reads command options with separate or equals values", () => {
@@ -89,4 +90,31 @@ test("summarizeExpenses calculates totals, category bars, biggest expense, and b
   assert.equal(report.biggest.id, "11111111-a");
   assert.match(report.budgetWarning, /80%/);
   assert.equal(summarizeExpenses(expenses, { month: "2026-11" }, 8000).budgetWarning, "Budget exceeded (100% or more).");
+});
+
+test("toCsv escapes commas, quotes, and newlines without mutating its input", () => {
+  const expenses = [{
+    id: "12345678",
+    amount: 25,
+    category: "food, home",
+    note: 'said "hello"\nthen left',
+    date: "2026-11-03",
+  }];
+  const csv = toCsv(expenses);
+
+  assert.match(csv, /"food, home"/);
+  assert.match(csv, /"said ""hello""\nthen left"/);
+  assert.deepEqual(parseCsvRecord('"a,b","say ""hi""\ncontinued"'), [
+    "a,b",
+    'say "hi"\ncontinued',
+  ]);
+  assert.equal(expenses[0].note, 'said "hello"\nthen left');
+});
+
+test("parseArgs recognizes the no-color boolean option", () => {
+  assert.deepEqual(parseArgs(["list", "--no-color"]), {
+    command: "list",
+    options: { "no-color": true },
+  });
+  assert.throws(() => parseArgs(["list", "--no-color=true"]), /does not take a value/);
 });

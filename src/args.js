@@ -1,4 +1,7 @@
-const supportedOptions = new Set(["amount", "category", "note", "date", "month", "id", "set"]);
+const supportedOptions = new Set([
+  "amount", "category", "note", "date", "month", "id", "set", "format", "out", "file", "no-color",
+]);
+const booleanOptions = new Set(["no-color"]);
 
 export function parseArgs(argv) {
   const [command = "help", ...args] = argv;
@@ -18,6 +21,12 @@ export function parseArgs(argv) {
     if (!supportedOptions.has(name)) {
       throw new Error(`Unknown option: --${name}`);
     }
+    if (booleanOptions.has(name)) {
+      if (separator !== -1) throw new Error(`Option --${name} does not take a value.`);
+      options[name] = true;
+      continue;
+    }
+
     if (value === undefined || value.startsWith("--") || value.length === 0) {
       throw new Error(`Option --${name} requires a value.`);
     }
