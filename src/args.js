@@ -1,4 +1,4 @@
-const supportedOptions = new Set(["amount", "category", "note", "date", "month"]);
+const supportedOptions = new Set(["amount", "category", "note", "date", "month", "id", "set"]);
 
 export function parseArgs(argv) {
   const [command = "help", ...args] = argv;
